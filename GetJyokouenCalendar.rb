@@ -154,22 +154,22 @@ def checkNextMonth(agent)
 		page = (page/:h2)[4].inner_text
 	rescue NoMethodError => ex
 		#予定表テーブルが存在する場合「inner_text」がundefined methodとなる
-		puts ex.class
+		APPEND_LOGFILE( ex.class)
 		return true
 	rescue => ex
-		puts "例外：翌月inner_text"
+		APPEND_LOGFILE( "例外：翌月inner_text")
 	else
 		if /更新をお待ちください/.match(page) then
-			puts "予定未作成 " + targetMonth
+			APPEND_LOGFILE( "予定未作成 " + targetMonth)
 			return false
 		else
-#			puts "翌月チェックアラート"
-#			puts "・翌月ページのh2のあたり"
+#			APPEND_LOGFILE( "翌月チェックアラート")
+#			APPEND_LOGFILE( "・翌月ページのh2のあたり")
 			return true
 		end
 	end
 rescue => ex
-	puts "例外 " + "checkNextMonth()"
+	APPEND_LOGFILE( "例外 " + "checkNextMonth()")
 	return false
 else
 
