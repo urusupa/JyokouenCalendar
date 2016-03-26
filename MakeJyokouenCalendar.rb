@@ -11,11 +11,12 @@ require 'common'
 
 def selectMonth()
 
-	strMonthPrev = TIMESTMP[0..5].to_i - 1
-	strMonthPrev = strMonthPrev.to_s
-	strMonthCurt = TIMESTMP[0..5]
-	strMonthNext = TIMESTMP[0..5].to_i + 1
-	strMonthNext = strMonthNext.to_s
+	strMonthCurt = Date.new TIMESTMP[0..3].to_i,TIMESTMP[4..5].to_i,TIMESTMP[6..7].to_i
+	strMonthPrev = strMonthCurt << 1
+	strMonthPrev = strMonthPrev.to_s[0..3] + strMonthPrev.to_s[5..6]
+	strMonthNext = strMonthCurt >> 1
+	strMonthNext = strMonthNext.to_s[0..3] + strMonthNext.to_s[5..6]
+	strMonthCurt = strMonthCurt.to_s[0..3] + strMonthCurt.to_s[5..6]
 
 	connection = Mysql::new(DBHOST, DBUSER, DBPASS , DBSCHEMA)
 	connection.charset = "utf8"
@@ -24,12 +25,13 @@ def selectMonth()
 	chkMonthNext = connection.query("SELECT Count(CALENDAR_YM) FROM T_JYOKOUEN_CALENDAR WHERE CALENDAR_YM = '" + strMonthNext + "' AND RCD_KBN = 0")
 	connection.close
 
+	APPEND_LOGFILE('・当月と前後1ヶ月をSELECT')
 	chkMonthPrev = chkMonthPrev.fetch_row().join("").to_i
-	puts "#{strMonthPrev} #{chkMonthPrev}"
+	APPEND_LOGFILE("#{strMonthPrev} #{chkMonthPrev}")
 	chkMonthCurt = chkMonthCurt.fetch_row().join("").to_i
-	puts "#{strMonthCurt} #{chkMonthCurt}"
+	APPEND_LOGFILE("#{strMonthCurt} #{chkMonthCurt}")
 	chkMonthNext = chkMonthNext.fetch_row().join("").to_i
-	puts "#{strMonthNext} #{chkMonthNext}"
+	APPEND_LOGFILE("#{strMonthNext} #{chkMonthNext}")
 
 
 	#この2つ分、最新+1が無い場合は-1それもないなら最新の一か月分のみ
@@ -40,8 +42,8 @@ def selectMonth()
 	else
 		aryMakeIcalMonth = [strMonthCurt]
 	end
-	puts 'データ作成月'
-	p aryMakeIcalMonth
+	APPEND_LOGFILE('・データ作成対象月')
+	APPEND_LOGFILE(aryMakeIcalMonth)
 	
 	return aryMakeIcalMonth
 rescue => ex
@@ -51,7 +53,7 @@ end
 def deleteFile()
 	File.delete(DATADIR + "JyokouenCalendar.ics")
 rescue => ex
-	p ex
+	APPEND_LOGFILE(ex)
 end
 
 def makeIcalData(aryMakeIcalMonth)
@@ -99,6 +101,11 @@ X-WR-CALDESC:大阪城公園弓道場の月間行事予定表です。\n
 		cntColumn = 2
 		while cnt <= 32 do
 			break if cntDay == 32
+=begin
+			break if /[0-9]{17}/ =~ calendarArry0[cntColumn]
+			break if !calendarArry0[cntColumn]
+			break if !calendarArry1[cntColumn]
+=end
 			strDTEND = strMonth + sprintf("%02d",cntDay)
 			strDTEND = Date.parse(strDTEND) + 1
 			strDTEND = strDTEND.strftime("%Y%m%d")
@@ -112,7 +119,7 @@ X-WR-CALDESC:大阪城公園弓道場の月間行事予定表です。\n
 			filehdl.puts "DTSTART;VALUE=DATE:" + strMonth + sprintf("%02d",cntDay) + ";"
 			filehdl.puts "DTEND;VALUE=DATE:" + strDTEND + ";"
 			filehdl.puts "CLASS:PUBLIC"
-			filehdl.puts "TRANSP:OPAQUE"
+			filehdl.puts "TRANSP:TRANSPARENT"
 			filehdl.puts "STATUS:CONFIRMED"
 			filehdl.puts "END:VEVENT"
 			cnt += 1
@@ -124,7 +131,7 @@ X-WR-CALDESC:大阪城公園弓道場の月間行事予定表です。\n
 
 			else
 				#p ex
-				puts '小の月 ' + strDTEND
+				APPEND_LOGFILE('・小の月 (' + strDTEND + ')')
 			end
 		end
 	end
@@ -132,26 +139,23 @@ X-WR-CALDESC:大阪城公園弓道場の月間行事予定表です。\n
 	filehdl.close
 rescue => ex
 	p ex
-	puts 'ファイル作成異常終了'
+	APPEND_LOGFILE('・ファイル作成異常終了')
 	PARCON_SQL.abnormal(aryMakeIcalMonth.join(','), __FILE__.gsub(/^.*\//,'') )
 else
-	puts 'ファイル作成正常終了'
+	APPEND_LOGFILE('・ファイル作成正常終了')
 	PARCON_SQL.normal(aryMakeIcalMonth.join(','), __FILE__.gsub(/^.*\//,'') )
 end
 
 def moveIcsForHost()
 #	FileUtils.cp(DATADIR + "JyokouenCalendar.ics", SHAREDIR + "JyokouenCalendar.ics")
-	FileUtils.cp(SHAREDIR + "icalendar/JyokouenCalendar.ics", SHAREDIR + "icalendar/JyokouenCalendar_bkup.ics")
-	FileUtils.cp(DATADIR + "JyokouenCalendar.ics", SHAREDIR + "icalendar/JyokouenCalendar.ics")
+	FileUtils.cp(DATADIR + "JyokouenCalendar.ics", DATADIR + "JyokouenCalendar_bkup.ics")
+	FileUtils.cp(DATADIR + "JyokouenCalendar.ics", WWWDIR + "icalendar/JyokouenCalendar.ics")
 rescue => ex
-	puts "ファイル移動異常終了"
-	PARCON_SQL.abnormal('SHEREDIR is disconnected', __FILE__.gsub(/^.*\//,'') )
-	puts "SHEREDIR is disconnected"
-	puts "コピー失敗"
-	sleep 5
+	APPEND_LOGFILE("・ファイル移動異常終了")
+	APPEND_LOGFILE(ex)
 else
 	PARCON_SQL.normal('JyokouenCalendar.ics', __FILE__.gsub(/^.*\//,'') )
-	puts "ファイル移動正常終了"
+	APPEND_LOGFILE("・ファイル移動正常終了")
 end
 
 #MAIN
