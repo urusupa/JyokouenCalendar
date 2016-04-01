@@ -76,13 +76,13 @@ def get_schedule(page)
 	connection.close
 
 		begin
-		filehdl = File.open(DATADIR + "JyokouenCalendar_work.txt","a+")
+		filehdl = File.open(TMPDIR + "JyokouenCalendar_work.txt","a+")
 			filehdl.puts (thisMonth + TIMESTMP)
 		filehdl.close
 		rescue Errno::ENOENT => ex
 		p ex
 
-		filehdl = File.open(DATADIR + "JyokouenCalendar_work.txt","w")
+		filehdl = File.open(TMPDIR + "JyokouenCalendar_work.txt","w")
 		filehdl.close
 		retry
 		end
@@ -197,8 +197,5 @@ rescue => ex
 else
 end
 
-
-#レコード妥当性のチェック
-#D1の一文字目がかならず丸か☓のどちらかでないといけない
 
 

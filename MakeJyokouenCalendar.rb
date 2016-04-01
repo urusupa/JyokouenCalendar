@@ -148,7 +148,7 @@ end
 
 def moveIcsForHost()
 #	FileUtils.cp(DATADIR + "JyokouenCalendar.ics", SHAREDIR + "JyokouenCalendar.ics")
-	FileUtils.cp(DATADIR + "JyokouenCalendar.ics", DATADIR + "JyokouenCalendar_bkup.ics")
+	FileUtils.cp(DATADIR + "JyokouenCalendar.ics", BKUPDIR + "JyokouenCalendar_bkup.ics")
 	FileUtils.cp(DATADIR + "JyokouenCalendar.ics", WWWDIR + "icalendar/JyokouenCalendar.ics")
 rescue => ex
 	APPEND_LOGFILE("・ファイル移動異常終了")
