@@ -15,17 +15,21 @@ require 'common'
 def get_schedule(page)
 	
 	thisMonth = (page/:table)[0].inner_text
-	thisMonth = thisMonth.gsub(/      /, ',')
-	thisMonth = thisMonth.gsub(/( |\n)/, '')
-	thisMonth = thisMonth.gsub(/,,,,,,,/, '')
-	thisMonth = thisMonth.gsub(/日,曜,午前,午後,夜間,行　　事,/, '')
+	thisMonth = thisMonth.gsub(/\u00A0/, '') # &nbsp;の削除
+	thisMonth = thisMonth.gsub(/\t/, '')
+	thisMonth = thisMonth.gsub(/\n\n\n/, ',')
+	thisMonth = thisMonth.gsub(/\n\n/, '')
+	thisMonth = thisMonth.gsub(/日\n午前\n午後\n夜間\n行事/, '')
 
-	thisMonth = thisMonth.gsub(/日,曜日,午前,午後,夜間,行　　　　　事,/, '') #201512対応
+	thisMonth = thisMonth.gsub(/ 日 \(.\)/, '') #曜日削除
 
 	strMonth = getTargetMonth(page)
 	
 	# 全角数字を半角数字に変換．nkf を使用
-	thisMonth = NKF.nkf('-wZ0', thisMonth)
+#	thisMonth = NKF.nkf('-wZ0', thisMonth)
+
+#	p thisMonth
+
 	wCalendarArry = []
 	calendarArry = Array.new(94)
 	wCalendarArry = thisMonth.split(",")
@@ -34,7 +38,6 @@ def get_schedule(page)
 	wCalendarArry.map! {|elem| elem == '閉館' ? elem = '×' : elem}
 	wCalendarArry.map! {|elem| elem == '休館' ? elem = ["×", "×", "×"] : elem}
 	wCalendarArry.map! {|elem| elem == '休　館　日' ? elem = ["×", "×", "×"] : elem}
-
 	wCalendarArry.flatten!
 	
 	calendarArry[0] = strMonth
@@ -44,12 +47,12 @@ def get_schedule(page)
 	while cntDay <= 31 do
 		calendarArry[posAry] = cntDay
 		break if !wCalendarArry[cntwCal+2] #小の月対応
-		marubatuCheck(calendarArry[posAry] , wCalendarArry[cntwCal+2] , wCalendarArry[cntwCal+3] , wCalendarArry[cntwCal+4])
-		calendarArry[posAry+1] = wCalendarArry[cntwCal+2] + wCalendarArry[cntwCal+3] + wCalendarArry[cntwCal+4]
-		calendarArry[posAry+2] = wCalendarArry[cntwCal+5]
+		marubatuCheck(calendarArry[posAry] , wCalendarArry[cntwCal+1] , wCalendarArry[cntwCal+2] , wCalendarArry[cntwCal+3])
+		calendarArry[posAry+1] = wCalendarArry[cntwCal+1] + wCalendarArry[cntwCal+2] + wCalendarArry[cntwCal+3]
+		calendarArry[posAry+2] = wCalendarArry[cntwCal+4]
 		posAry += 3
 		cntDay += 1
-		cntwCal += 6
+		cntwCal += 5
 	end
 
 	calendarArry.map! {|elem| elem ? elem : ''}
@@ -118,9 +121,12 @@ end
 
 
 def getTargetMonth(page)
-	targetMonth = page.search('//html/body/div/div[@id="main_wrapper000"]/div/h2/font/b').inner_text
+#	targetMonth = page.search('//html/body/div/div[@id="main_wrapper000"]/div/h2/font/b').inner_text
+#	targetMonth = page.search('//*[@id="introduction_schedule_contents"]/div/section/div/div[2]/div/p').inner_text
+	targetMonth = page.search('//*[@id="introduction_schedule_contents"]/div/section/div/div/div/p[@class="calendar_title"]').inner_text
 	targetMonth = targetMonth.gsub(/月/, '')
 	targetMonth = NKF.nkf('-wZ0', targetMonth)
+	targetMonth = targetMonth.to_i
 	
 	if sprintf("%02d",targetMonth) == '01' && TIMESTMP[4..5] == '12' then #年越し対応
 		tmp = TIMESTMP[0..3].to_i + 1
@@ -132,6 +138,7 @@ def getTargetMonth(page)
 	return targetMonth
 rescue => ex
 	puts "例外 " + "getTargetMonth()"
+	p ex
 	return false
 else
 	return true
@@ -147,29 +154,26 @@ end
 ###############################################################################
 def checkNextMonth(agent)
 
-	page = agent.get('http://osakajo.kyudojo.info/link3018.html')
+	page = agent.get('http://www.osaka-sp.jp/kyudojo/introduction/schedule/?month=next')
 	targetMonth = getTargetMonth(page)
+	page = agent.get('http://www.osaka-sp.jp/kyudojo/introduction/schedule/')
+
 	begin
-		page = agent.page.link_with(:text => "・来月").click
-		page = (page/:h2)[4].inner_text
+#		page = agent.page.link_with(:text => "・来月").click
+		page = agent.page.link_with(href: '?month=next').click
+#		page = (page/:h2)[4].inner_text
 	rescue NoMethodError => ex
 		#予定表テーブルが存在する場合「inner_text」がundefined methodとなる
-		APPEND_LOGFILE( ex.class)
+		APPEND_LOGFILE( "翌月スケジュール無し" )
+		APPEND_LOGFILE( ex.class )
 		return true
 	rescue => ex
 		APPEND_LOGFILE( "例外：翌月inner_text")
-	else
-		if /更新をお待ちください/.match(page) then
-			APPEND_LOGFILE( "予定未作成 " + targetMonth)
-			return false
-		else
-#			APPEND_LOGFILE( "翌月チェックアラート")
-#			APPEND_LOGFILE( "・翌月ページのh2のあたり")
-			return true
-		end
 	end
+	return true
 rescue => ex
 	APPEND_LOGFILE( "例外 " + "checkNextMonth()")
+	p ex
 	return false
 else
 
@@ -180,13 +184,15 @@ end
 #MAIN
 begin
 	agent = Mechanize.new
-	page = agent.get('http://osakajo.kyudojo.info/')
-	page = agent.page.link_with(:text => "行事予定表").click
+#	page = agent.get('http://osakajo.kyudojo.info/')
+	page = agent.get('http://www.osaka-sp.jp/kyudojo/')
+#	page = agent.page.link_with(:text => "行事予定表").click
+	page = agent.page.link_with(:text => "施設の空き状況とご予約").click
 	get_schedule(page)
 
 	if checkNextMonth(agent) then
-		page = agent.get('http://osakajo.kyudojo.info/link3018.html')
-		page = agent.page.link_with(:text => "・来月").click
+		page = agent.get('http://www.osaka-sp.jp/kyudojo/introduction/schedule/?month=next')
+#		page = agent.page.link_with(:text => "・来月").click
 		get_schedule(page)
 	else
 		puts "翌月分データなし"
