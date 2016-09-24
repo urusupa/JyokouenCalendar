@@ -121,8 +121,6 @@ end
 
 
 def getTargetMonth(page)
-#	targetMonth = page.search('//html/body/div/div[@id="main_wrapper000"]/div/h2/font/b').inner_text
-#	targetMonth = page.search('//*[@id="introduction_schedule_contents"]/div/section/div/div[2]/div/p').inner_text
 	targetMonth = page.search('//*[@id="introduction_schedule_contents"]/div/section/div/div/div/p[@class="calendar_title"]').inner_text
 	targetMonth = targetMonth.gsub(/月/, '')
 	targetMonth = NKF.nkf('-wZ0', targetMonth)
@@ -134,7 +132,7 @@ def getTargetMonth(page)
 	else
 		targetMonth = TIMESTMP[0..3] + sprintf("%02d",targetMonth)
 	end
-	
+
 	return targetMonth
 rescue => ex
 	puts "例外 " + "getTargetMonth()"
@@ -152,24 +150,20 @@ end
 # 翌月のテーブルが取得可能ならtrueを返す
 # それ以外はfalse
 ###############################################################################
-def checkNextMonth(agent)
-
-	page = agent.get('http://www.osaka-sp.jp/kyudojo/introduction/schedule/?month=next')
-	targetMonth = getTargetMonth(page)
-	page = agent.get('http://www.osaka-sp.jp/kyudojo/introduction/schedule/')
+def checkNextMonth(page)
 
 	begin
-#		page = agent.page.link_with(:text => "・来月").click
-		page = agent.page.link_with(href: '?month=next').click
-#		page = (page/:h2)[4].inner_text
+		page = page.link_with(href: '?month=next').click
 	rescue NoMethodError => ex
-		#予定表テーブルが存在する場合「inner_text」がundefined methodとなる
+		#翌月のページのリンクが無いとNoMethodErrorとなる
 		APPEND_LOGFILE( "翌月スケジュール無し" )
 		APPEND_LOGFILE( ex.class )
 		return true
 	rescue => ex
 		APPEND_LOGFILE( "例外：翌月inner_text")
+		p ex
 	end
+	
 	return true
 rescue => ex
 	APPEND_LOGFILE( "例外 " + "checkNextMonth()")
@@ -184,15 +178,12 @@ end
 #MAIN
 begin
 	agent = Mechanize.new
-#	page = agent.get('http://osakajo.kyudojo.info/')
 	page = agent.get('http://www.osaka-sp.jp/kyudojo/')
-#	page = agent.page.link_with(:text => "行事予定表").click
 	page = agent.page.link_with(:text => "施設の空き状況とご予約").click
 	get_schedule(page)
 
-	if checkNextMonth(agent) then
-		page = agent.get('http://www.osaka-sp.jp/kyudojo/introduction/schedule/?month=next')
-#		page = agent.page.link_with(:text => "・来月").click
+	if checkNextMonth(page) then
+		page = page.link_with(href: '?month=next').click
 		get_schedule(page)
 	else
 		puts "翌月分データなし"
