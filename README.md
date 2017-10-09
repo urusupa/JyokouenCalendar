@@ -1,4 +1,8 @@
 # JyokouenCalendar
 JyokouenCalendar
 
-‚¢‚Á‚½‚ñ“®‚­‚æ‚¤‚É‚È‚Á‚½‚Ì‚Å‚±‚±‚©‚çƒo[ƒWƒ‡ƒ“ŠÇ—‚·‚é
+ã„ã£ãŸã‚“å‹•ãã‚ˆã†ã«ãªã£ãŸã®ã§ã“ã“ã‹ã‚‰ãƒãƒ¼ã‚¸ãƒ§ãƒ³ç®¡ç†ã™ã‚‹
+
+å¤§é˜ªåŸå…¬åœ’å¼“é“å ´ - è¡Œäº‹äºˆå®šè¡¨  
+http://nyctea.me/icalendar/JyokouenCalendar.ics  
+æƒ…å ±å…ƒï¼šhttp://www.osaka-sp.jp/kyudojo/introduction/schedule/  
